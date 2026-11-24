@@ -1,58 +1,91 @@
-FreePort
-========
+# FreePort
 
-Get a free open TCP port that is ready to use.
+Get free open TCP ports ready to bind in Go libraries, shell scripts, and CI pipelines.
 
-## Command Line Example:
-```bash
-# Ask the kernel to give us an open port.
-export port=$(freeport)
+## Port Allocation Flow
 
-# Start standalone httpd server for testing
-httpd -X -c "Listen $port" &
-
-# Curl local server on the selected port
-curl localhost:$port
+```mermaid
+sequenceDiagram
+    participant Caller as Caller / Shell
+    participant FP as freeport.GetFreePort()
+    participant Kernel as OS TCP Stack (localhost:0)
+    Caller->>FP: Request ephemeral TCP port
+    FP->>Kernel: net.ListenTCP("tcp", "localhost:0")
+    Kernel-->>FP: Assigns unused port + socket handle
+    FP->>Kernel: Close listener (defer l.Close)
+    FP-->>Caller: Return port integer (or stdout CLI)
 ```
 
-## Golang example:
+## Documentation Portal (Diátaxis)
+
+- **Tutorials:** [CLI and Go Library Quickstart](docs/01-tutorials/index.md)
+- **How-To Guides:** [Safe Ephemeral Port Allocation in Go and CI (ASD-STE100)](docs/02-how-to-guides/index.md)
+- **Reference:** [Go API, CLI Exit Behavior, and GoReleaser Targets](docs/03-reference/index.md)
+- **Explanation:** [Kernel Ephemeral Port Selection & TOCTOU Considerations](docs/04-explanation/index.md)
+
+## Command Line Example
+
+```bash
+# Ask the kernel to return an available local TCP port.
+export port=$(go run ./cmd/freeport)
+
+# Verify the binary output
+echo "Selected port: $port"
+```
+
+## Golang Examples
+
 ```go
 package main
 
-import "github.com/phayes/freeport"
+import (
+	"fmt"
+	"log"
+
+	"github.com/phayes/freeport"
+)
 
 func main() {
 	port, err := freeport.GetFreePort()
 	if err != nil {
 		log.Fatal(err)
 	}
-	// port is ready to listen on
-}
+	fmt.Println(port)
 
+	ports, err := freeport.GetFreePorts(3)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(ports)
+}
 ```
 
 ## Installation
 
-#### Mac OSX
+### Mac OSX
+
 ```bash
 brew install phayes/repo/freeport
 ```
 
+### CentOS and other RPM based systems
 
-#### CentOS and other RPM based systems
 ```bash
 wget https://github.com/phayes/freeport/releases/download/1.0.2/freeport_1.0.2_linux_386.rpm
 rpm -Uvh freeport_1.0.2_linux_386.rpm
 ```
 
-#### Ubuntu and other DEB based systems
+### Ubuntu and other DEB based systems
+
 ```bash
-wget wget https://github.com/phayes/freeport/releases/download/1.0.2/freeport_1.0.2_linux_amd64.deb
+wget https://github.com/phayes/freeport/releases/download/1.0.2/freeport_1.0.2_linux_amd64.deb
 dpkg -i freeport_1.0.2_linux_amd64.deb
 ```
 
-#### Building From Source
+### Building From Source (Go 1.21+)
+
 ```bash
-sudo apt-get install golang                    # Download go. Alternativly build from source: https://golang.org/doc/install/source
-go get github.com/phayes/freeport
+go install github.com/phayes/freeport/cmd/freeport@latest
+# Or build locally inside a cloned repository:
+go build -o freeport ./cmd/freeport
 ```
